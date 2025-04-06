@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login and 2FA Flow</title>
+</head>
+<body>
+    <!-- Login Section -->
+    <div id="login">
+        <h1>Login</h1>
+        <input type="text" id="username" placeholder="Username" required>
+        <input type="password" id="password" placeholder="Password" required>
+        <button onclick="handleLogin()">Login</button>
+    </div>
+
+    <!-- 2FA Section (Initially Hidden) -->
+    <div id="two-factor-auth" style="display: none;">
+        <h1>Two-Factor Authentication</h1>
+        <p>Scan the QR Code with your authenticator app:</p>
+        <img id="qr-code" src="http://127.0.0.1:5000/qr-image" alt="QR Code">
+        <p>Enter the code from your app:</p>
+        <input type="text" id="auth-code" placeholder="Enter 2FA code" required>
+        <button onclick="submit2FA()">Submit</button>
+    </div>
+
+    <!-- Camera Section (Initially Hidden) -->
+    <div id="camera-feed" style="display: none;">
+        <h1>Camera Test Environment</h1>
+        <video id="video" autoplay style="width: 100%; max-width: 500px; border: 2px solid #000;"></video>
+    </div>
+
+    <script>
+        // Simulate Login Process
+        function handleLogin() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            if (!username || !password) {
+                alert('Please fill in both fields!');
+                return;
+            }
+
+            // Simulate successful login (replace with server validation)
+            alert('Login successful!');
+            document.getElementById('login').style.display = 'none';
+            document.getElementById('two-factor-auth').style.display = 'block';
+        }
+
+        // Simulate 2FA Verification
+        function submit2FA() {
+            const authCode = document.getElementById('auth-code').value;
+
+            if (!authCode) {
+                alert('Please enter the 2FA code!');
+                return;
+            }
+
+            // Send code to server for verification
+            fetch('http://127.0.0.1:5000/verify', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ code: authCode }), // Sending 2FA code to backend
+            })
+            .then(response => response.json()) // Parse JSON response
+            .then(data => {
+                if (data.success) {
+                    alert('2FA successful!');
+
+                    // Hide 2FA page, show camera feed
+                    document.getElementById('two-factor-auth').style.display = 'none';
+                    document.getElementById('camera-feed').style.display = 'block';
+
+                    // Start Camera Feed
+                    startCamera();
+                } else {
+                    alert('Invalid 2FA code. Please try again.');
+                }
+            })
+            .catch(err => {
+                console.error('Error verifying code:', err);
+                alert('An error occurred while verifying your 2FA code.');
+            });
+        }
+
+        // Start Camera Feed
+        function startCamera() {
+            const video = document.getElementById('video'); // Reference to <video> element
+
+            navigator.mediaDevices.getUserMedia({ video: true }) // Access the camera
+                .then(stream => {
+                    console.log("Camera feed initialized...");
+                    video.srcObject = stream; // Attach stream to <video> element
+                })
+                .catch(err => {
+                    console.error("Error accessing camera:", err);
+                    alert("Could not access the camera. Please check your permissions.");
+                });
+        }
+    </script>
+</body>
+</html>
