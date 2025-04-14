@@ -1,0 +1,188 @@
+<!DOCTYPE html> <!--Tells the browser that this is an html5 file -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8"> <!--Acts as a sort of translation key for html diferent standards interpret char differently -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!--This is what makes the page responsive for mobile use because it sets the viewport to the screen size -->
+    <title>Camera, Barcode Generator, and Scanner</title> <!--This is what shows up in the search bar/tab -->
+    
+    <!-- External Libraries -->
+
+    <!--This is used to generate barcodes of different types and put them into html <canvas> elemtents -->
+    <!-- canvas element is combined with the data we provided in the Jsbarcode function to create an image/barcode -->
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    
+    <!--This is used for generating pdf files in the browser, we use this to save the barcode -->
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.4.0/dist/jspdf.umd.min.js"></script>
+    
+    <!--Barcode scanning library using a camera's live video feed -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+</head>
+<body>
+    <h1>Camera Feed with Barcode Features</h1>
+
+    <!-- Camera Feed Section -->
+        <!--This is where the live camera stream will be shown, autoplay starts playing once camera is laaded, style makes it responsive and nice -->
+    <video id="video" autoplay style="width: 100%; max-width: 500px; border: 2px solid #000;"></video>
+    <br>
+    <!--button to call a function to toggle between front(user) and rear(environment) camera -->
+    <button onclick="switchCamera()">Switch Camera</button>
+    
+    
+    <br><br>
+
+    <!-- Barcode Generation Section -->
+    <h2>Generate Barcode and Download as PDF</h2>
+    <input type="text" id="barcodeData" placeholder="Enter data for barcode" />
+    <br>
+    <button onclick="generateAndDownloadBarcode()">Generate Barcode & Download PDF</button>
+    <br>
+    <!--This takes in the input for what goes into the barcode -->
+    <!--Calls a funcion to generate barcode, render it on the canvas, add it to a pdf, and download to pdf -->
+    <!--note: try and make it to where you can add multiple barcodes to a single pdf and change the size of them -->
+
+
+
+    <!-- Barcode Scanning Section -->
+    <h2>Scan Barcode from Camera Feed</h2>
+    <!--calls the function that will sstart scanning for barcodes -->
+    <button onclick="startBarcodeScanner()">Start Scanning</button>
+    <!--This is what is used to display what is scanned -->
+    <p id="scannedData" style="font-weight: bold;"></p>
+
+
+
+    <script>
+        // variable to keep track of which camera is on
+        let currentFacingMode = 'environment'; // Default to rear camera
+       
+        //reference to the video html video tag that will display live stream
+        const videoElement = document.getElementById('video');
+
+        // Start the camera with the specified facing mode
+        // accesses cammera based on the mode passed as param
+        function startCamera(facingMode) {
+            navigator.mediaDevices.getUserMedia({
+                video: { facingMode: facingMode }
+            })
+            // assigns that video stream to the video element above
+            .then(stream => {
+                videoElement.srcObject = stream;
+            })
+            .catch(err => {
+                console.error("Error accessing camera:", err);
+                alert("Could not access the camera. Please check your permissions.");
+            });
+        }
+
+
+
+
+
+        // Switch between front and rear cameras
+        function switchCamera() {
+            //checks if current facing is envrionment and if so changes it to user     user = if true : environment if false
+            currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+            startCamera(currentFacingMode);
+        }
+
+        // Automatically start the camera with the rear camera initially
+        startCamera(currentFacingMode);
+
+
+
+
+
+        // Generate barcode and download as PDF
+
+        // Gets user input and makes sure its not empty
+        async function generateAndDownloadBarcode() {
+            const data = document.getElementById('barcodeData').value;
+            //declare variables 
+            // declare form data as formData={"Location":location, ...}
+            // do the fetch with body = body: JSON.stringify(formdata) then pass this to the barcode generator
+            
+            if (!data) {
+                alert("Please enter data for the barcode.");
+                return;
+            }
+
+            // dynamically Create a canvas element for rendering the barcode
+            const canvas = document.createElement('canvas');
+            canvas.width = 300;
+            canvas.height = 100;
+            const context = canvas.getContext('2d');
+
+            // Generate the barcode onto the canvas
+            JsBarcode(canvas, data, {
+                format: "CODE128",
+                width: 2,
+                height: 50,
+                displayValue: true
+            });
+
+            // Convert the canvas to a PNG image data URL
+            const barcodeImage = canvas.toDataURL("image/png");
+
+            // Create PDF
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF();
+            pdf.addImage(barcodeImage, 'PNG', 10, 10, 180, 50); // Add barcode to PDF
+            pdf.save("barcode.pdf"); // Save as PDF
+
+            //Note change this to be able to add multiple pngs to one file that can all be downloaded at once
+
+        }
+
+
+
+
+        // Start barcode scanner using QuaggaJS
+        function startBarcodeScanner() {
+            // Initializes the scanner to use the current camera
+            Quagga.init({
+                inputStream: {
+                    type: "LiveStream",
+                    target: videoElement,
+                    constraints: {
+                        facingMode: currentFacingMode // Use the current camera facing mode
+                    }
+                },
+                decoder: {
+                    readers: [
+                        "code_128_reader",      // Common barcode type
+                        "ean_reader",           // European Article Number (used in retail)
+                        "ean_8_reader",         // Shorter version of EAN
+                        "upc_reader",           // Universal Product Code
+                        "upc_e_reader",         // Smaller UPC format
+                        "code_39_reader",       // Alphanumeric barcode
+                        "code_93_reader",       // Compact version of Code 39
+                        "i2of5_reader",         // Interleaved 2 of 5 (used in warehouses)
+                        "2of5_reader",          // Non-interleaved 2 of 5
+                        "codabar_reader"        // Used in libraries, blood banks, etc.
+                    ] // Specify barcode type
+                }
+            }, err => {
+                if (err) {
+                    console.error("Error initializing barcode scanner:", err);
+                    alert("Failed to start barcode scanner.");
+                    return;
+                }
+                Quagga.start();
+            });
+
+            // Listen for detected barcodes
+
+            //Note: try catch for multiple types codes
+            Quagga.onDetected(data => {
+                const scannedCode = data.codeResult.code; // Get the scanned data
+                console.log("Barcode detected:", scannedCode);
+                document.getElementById("scannedData").innerText = `Scanned Data: ${scannedCode}`;
+                
+                // Alert the scanned barcode
+                alert(`Scanned Barcode: ${scannedCode}`);
+                Quagga.stop();
+            });
+        }
+    </script>
+</body>
+</html>

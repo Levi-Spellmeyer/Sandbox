@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera and Barcode</title>
+    <!-- External Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.4.0/dist/jspdf.umd.min.js"></script>
+</head>
+<body>
+    <h1>Camera Feed with Barcode Feature</h1>
+
+    <!-- Camera Feed Section -->
+    <video id="video" autoplay style="width: 100%; max-width: 500px; border: 2px solid #000;"></video>
+    <br>
+    <button onclick="switchCamera()">Switch Camera</button>
+    <br><br>
+
+    <!-- Barcode Generation Section -->
+    <h2>Generate Barcode and Download as PDF</h2>
+    <input type="text" id="barcodeData" placeholder="Enter data for barcode" />
+    <br>
+    <button onclick="generateAndDownloadBarcode()">Generate Barcode & Download PDF</button>
+    <br>
+
+    <script>
+        let currentFacingMode = 'environment'; // Default to rear camera
+        const videoElement = document.getElementById('video');
+
+        // Start the camera with the specified facing mode
+        function startCamera(facingMode) {
+            navigator.mediaDevices.getUserMedia({
+                video: { facingMode: facingMode }
+            })
+            .then(stream => {
+                videoElement.srcObject = stream;
+            })
+            .catch(err => {
+                console.error("Error accessing camera:", err);
+                alert("Could not access the camera. Please check your permissions.");
+            });
+        }
+
+        // Switch between front and rear cameras
+        function switchCamera() {
+            currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+            startCamera(currentFacingMode);
+        }
+
+        // Automatically start the camera with the rear camera initially
+        startCamera(currentFacingMode);
+
+        // Generate barcode and download as PDF
+        async function generateAndDownloadBarcode() {
+            const data = document.getElementById('barcodeData').value;
+            if (!data) {
+                alert("Please enter data for the barcode.");
+                return;
+            }
+
+            // Create a canvas element for rendering the barcode
+            const canvas = document.createElement('canvas');
+            canvas.width = 300;
+            canvas.height = 100;
+            const context = canvas.getContext('2d');
+
+            // Generate the barcode on the canvas
+            JsBarcode(canvas, data, {
+                format: "CODE128",
+                width: 2,
+                height: 50,
+                displayValue: true
+            });
+
+            // Convert the canvas to a PNG image data URL
+            const barcodeImage = canvas.toDataURL("image/png");
+
+            // Create PDF
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF();
+            pdf.addImage(barcodeImage, 'PNG', 10, 10, 180, 50); // Add barcode to PDF
+            pdf.save("barcode.pdf"); // Save as PDF
+        }
+    </script>
+</body>
+</html>
